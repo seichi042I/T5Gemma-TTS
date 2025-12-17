@@ -16,8 +16,35 @@ import numpy as np
 import torch
 import torch.distributed as dist
 import torch.nn as nn
-import wandb
 from torch.optim import AdamW
+
+
+class DummyWandb:
+    """Dummy wandb replacement when wandb is disabled."""
+    def __init__(self):
+        pass
+    
+    def log(self, *args, **kwargs):
+        pass
+    
+    def finish(self):
+        pass
+
+
+def _init_wandb_or_dummy(args, exp_dir):
+    """Initialize wandb or return dummy if disabled."""
+    if getattr(args, "disable_wandb", 0):
+        logging.info("wandb disabled, using tensorboard only")
+        return DummyWandb()
+    
+    import wandb
+    return wandb.init(
+        project="t5gemma",
+        name=exp_dir.split("/")[-1],
+        config=args,
+        dir=exp_dir,
+        entity=args.wandb_entity,
+    )
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data.sampler import Sampler
@@ -52,13 +79,7 @@ class Trainer:
         )
         if self.rank == 0:
             self.writer = SummaryWriter(args.exp_dir)
-            self.wandb = wandb.init(
-                project="t5gemma",
-                name=args.exp_dir.split("/")[-1],
-                config=args,
-                dir=args.exp_dir,
-                entity=self.args.wandb_entity,
-            )
+            self.wandb = _init_wandb_or_dummy(args, args.exp_dir)
         self.seed_everything(seed=self.args.seed)
         self.meters = self._setup_meters()
 
@@ -838,20 +859,21 @@ class Trainer:
                     diag_metrics["val_diag/audio_path"] = audio_path
             except Exception as exc:
                 logging.warning("saving diagnostic audio failed: %s", exc)
-            try:
-                import wandb
+            if not getattr(self.args, "disable_wandb", 0):
+                try:
+                    import wandb
 
-                diag_metrics["val_diag/audio"] = wandb.Audio(
-                    (
-                        diag_audio_np.squeeze(-1)
-                        if diag_audio_np.shape[-1] == 1
-                        else diag_audio_np
-                    ),
-                    sample_rate=sample_rate,
-                    caption=f"val_diag_step{global_step}",
-                )
-            except Exception as exc:
-                logging.warning("wandb audio log failed: %s", exc)
+                    diag_metrics["val_diag/audio"] = wandb.Audio(
+                        (
+                            diag_audio_np.squeeze(-1)
+                            if diag_audio_np.shape[-1] == 1
+                            else diag_audio_np
+                        ),
+                        sample_rate=sample_rate,
+                        caption=f"val_diag_step{global_step}",
+                    )
+                except Exception as exc:
+                    logging.warning("wandb audio log failed: %s", exc)
         self.wandb.log(diag_metrics, step=global_step)
 
     def validate(self, valid_loader=None, hide_progress=True):

@@ -52,6 +52,8 @@ mkdir -p "${EXP_ROOT}"
 DATASET_DIRS="['${EMILIA_YODAS_ROOT}']"
 MANIFEST_NAMES="['manifest_final']"
 
+export CUDA_VISIBLE_DEVICES=0
+
 echo "[Info] launching torchrun with ${NUM_GPUS} GPU(s)"
 torchrun --standalone --nnodes=1 --nproc_per_node="${NUM_GPUS}" "${PROJECT_ROOT}/main.py" \
   --model_arch t5gemma \

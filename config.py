@@ -44,6 +44,11 @@ def MyParser():
     parser.add_argument("--dataset_dir", type=str, help="need to be compatible with corresponding dataset py file")
     parser.add_argument("--local_wandb", type=int, default=0, help="if 1, will use local wandb, otherwise use the global one")
     parser.add_argument("--wandb_entity", type=str, default="your-wandb-entity", help="the entity (usually your username) for wandb")
+    parser.add_argument("--disable_wandb", type=int, default=0, help="if 1, disable wandb logging and use only tensorboard")
+    
+    # QLoRA / Quantization options for low-VRAM training
+    parser.add_argument("--load_in_4bit", type=int, default=0, help="if 1, load model in 4-bit quantization (QLoRA)")
+    parser.add_argument("--load_in_8bit", type=int, default=0, help="if 1, load model in 8-bit quantization")
     parser.add_argument("--model_arch", type=str, default="t5gemma", choices=["t5gemma"], help="select architecture: T5Gemma-based model (VoiceStar removed)")
     parser.add_argument("--t5gemma_model_name", type=str, default="google/t5gemma-b-b-ul2", help="Hugging Face repo id or local path for the T5Gemma checkpoint")
     parser.add_argument("--t5_gradient_checkpointing", type=int, default=0, help="Set to 1 to enable gradient checkpointing for T5Gemma (reduces training memory). During inference use_cache is auto-enabled.")
